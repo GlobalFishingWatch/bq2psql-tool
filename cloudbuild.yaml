@@ -1,0 +1,30 @@
+steps:
+  # Push production image to GCR
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "--target",
+        "build",
+        "-t",
+        "gcr.io/world-fishing-827/github.com/globalfishingwatch/bq2psql-tool:$COMMIT_SHA",
+        ".",
+      ]
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "gcr.io/world-fishing-827/github.com/globalfishingwatch/bq2psql-tool:$COMMIT_SHA",
+      ]
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "tag",
+        "gcr.io/world-fishing-827/github.com/globalfishingwatch/bq2psql-tool:$COMMIT_SHA",
+        "gcr.io/world-fishing-827/github.com/globalfishingwatch/bq2psql-tool:latest",
+      ]
+images:
+  - "gcr.io/world-fishing-827/github.com/globalfishingwatch/bq2psql-tool:$COMMIT_SHA"
+  - "gcr.io/world-fishing-827/github.com/globalfishingwatch/bq2psql-tool:latest"
+
+timeout: 900s
