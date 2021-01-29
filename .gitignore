@@ -4,5 +4,5 @@
 *.so
 main
 
-bq2es
-bq2es-tool
+bq2psql
+bq2psql-tool
