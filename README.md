@@ -36,11 +36,11 @@ The import command allows you to import data from BigQuery to Postgres.
 - `--project-id=` the project id where we want to run the query.
 - `--query=` SQL query to get rows from BigQuery.
 - `--table-name=` The destination name table.
+- `--table-schema=` The destination table schema.
 - `--postgres-address=` The database address and port.
 - `--postgres-user=` The database user.
 - `--postgres-password=` The database password.
 - `--postgres-database=` The destination name database.
-- `--postgres-database-schema=` The destination table schema.
 
 ##### Optional flags
 * `--view-name=` If you want to use a view, this is the destination view name

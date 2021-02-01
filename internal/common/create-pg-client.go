@@ -9,11 +9,11 @@ import (
 )
 
 func CreatePostgresClient(ctx context.Context, postgresConfig types.PostgresConfig) *pgx.Conn {
-	conn, err := pgx.Connect(ctx, "postgresql://localhost/postgres?user=postgres&password=a1234567")
+	uri := "postgresql://" + postgresConfig.Addr + "/" + postgresConfig.Database + "?user=" + postgresConfig.User + "&password=" + postgresConfig.Password
+	conn, err := pgx.Connect(ctx, uri)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
 		os.Exit(1)
 	}
-	// defer conn.Close(ctx)
 	return conn
 }
