@@ -17,22 +17,20 @@ func init() {
 	importCmd.MarkFlagRequired("table-name")
 	importCmd.Flags().StringP("table-schema", "", "", "The name of the view to associate the table")
 	importCmd.MarkFlagRequired("table-schema")
-	importCmd.Flags().StringP("view-name", "v", "", "The name of the view to associate the table")
 
-	importCmd.Flags().StringP("postgres-address", "", "", "The name of the view to associate the table")
+	importCmd.Flags().StringP("postgres-address", "", "", "The address of the database")
 	importCmd.MarkFlagRequired("postgres-address")
-	importCmd.Flags().StringP("postgres-user", "", "", "The name of the view to associate the table")
+	importCmd.Flags().StringP("postgres-user", "", "", "The destination credentials user")
 	importCmd.MarkFlagRequired("postgres-user")
-	importCmd.Flags().StringP("postgres-password", "", "", "The name of the view to associate the table")
+	importCmd.Flags().StringP("postgres-password", "", "", "The destination credentials password")
 	importCmd.MarkFlagRequired("postgres-password")
-	importCmd.Flags().StringP("postgres-database", "", "", "The name of the view to associate the table")
+	importCmd.Flags().StringP("postgres-database", "", "", "The destination database name")
 	importCmd.MarkFlagRequired("postgres-database")
 
 	viper.BindPFlag("import-project-id", importCmd.Flags().Lookup("project-id"))
 	viper.BindPFlag("import-query", importCmd.Flags().Lookup("query"))
 	viper.BindPFlag("import-table-name", importCmd.Flags().Lookup("table-name"))
 	viper.BindPFlag("import-table-schema", importCmd.Flags().Lookup("table-schema"))
-	viper.BindPFlag("import-view-name", importCmd.Flags().Lookup("view-name"))
 	viper.BindPFlag("import-postgres-address", importCmd.Flags().Lookup("postgres-address"))
 	viper.BindPFlag("import-postgres-user", importCmd.Flags().Lookup("postgres-user"))
 	viper.BindPFlag("import-postgres-password", importCmd.Flags().Lookup("postgres-password"))
@@ -56,8 +54,7 @@ Example:
 	  --postgres-address="localhost:5432" \
 	  --postgres-user="postgres" \
 	  --postgres-password="XaD2sd$34Sdas1$ae" \
-	  --postgres-database="postgres" \
-	  --view-name="vessels"	
+	  --postgres-database="postgres" 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Println("→ Executing Import command")
@@ -66,7 +63,6 @@ Example:
 			Query:     viper.GetString("import-query"),
 			ProjectId: viper.GetString("import-project-id"),
 			TableName: viper.GetString("import-table-name"),
-			ViewName:  viper.GetString("import-view-name"),
 			Schema:    viper.GetString("import-table-schema"),
 		}
 
