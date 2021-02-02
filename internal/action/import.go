@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/GlobalFishingWatch/bq2psql-tool/internal/common"
 	"github.com/GlobalFishingWatch/bq2psql-tool/types"
+	"github.com/GlobalFishingWatch/bq2psql-tool/utils"
 	"github.com/jackc/pgx/v4"
 	"google.golang.org/api/iterator"
 	"log"
@@ -34,10 +35,6 @@ func ImportBigQueryToPostgres(params types.ImportParams, postgresConfig types.Po
 
 	log.Println("→ Importing results to Postgres")
 	importToPostgres(ctx, ch, params.TableName)
-	if params.ViewName != "" {
-		deleteView(ctx, params.ViewName)
-		createView(ctx, params.ViewName, params.TableName)
-	}
 }
 
 // BigQuery Functions
@@ -154,32 +151,6 @@ func createTable(ctx context.Context, tableName string, schema string) {
 	log.Printf("→ PG →→ Successfully created table with name %v", tableName)
 }
 
-func createView(ctx context.Context, viewName string, tableName string) {
-	createViewCommand := fmt.Sprintf(`
-		CREATE VIEW %s AS
-    		SELECT *
-    		FROM %s
-		`, viewName, tableName)
-	log.Printf("→ PG →→ Creating view with command %s", createViewCommand)
-	_, err := psClient.Exec(ctx, createViewCommand)
-	if err != nil {
-		log.Fatalf("→ PG →→ Error creating view: %v", err)
-	}
-
-	log.Printf("→ PG →→ Successfully created view with name %v", viewName)
-}
-
-func deleteView(ctx context.Context, viewName string) {
-	deleteViewCommand := fmt.Sprintf(`DROP VIEW IF EXISTS %s;`, viewName)
-	log.Printf("→ PG →→ Deleting view with name %s and command %s", viewName, deleteViewCommand)
-	_, err := psClient.Exec(ctx, deleteViewCommand)
-	if err != nil {
-		log.Fatalf("→ PG →→ Error deleting view: %v", err)
-	}
-
-	log.Printf("→ PG →→ Successfully deleting view with name %v", viewName)
-}
-
 func getInsertQuery(table string, doc map[string]bigquery.Value) string {
 	var query = fmt.Sprintf("INSERT INTO %v ", table)
 	var columns = "("
@@ -196,7 +167,7 @@ func getInsertQuery(table string, doc map[string]bigquery.Value) string {
 		} else {
 			values = values + "null,"
 		}
-		columns = columns + column + ","
+		columns = columns + utils.CamelCaseToSnakeCase(column) + ","
 	}
 	columns = TrimSuffix(columns, ",")
 	columns = columns + ") "

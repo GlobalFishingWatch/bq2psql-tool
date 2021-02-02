@@ -43,7 +43,6 @@ The import command allows you to import data from BigQuery to Postgres.
 - `--postgres-database=` The destination name database.
 
 ##### Optional flags
-* `--view-name=` If you want to use a view, this is the destination view name
 
 #### Example
 Here an example of this command:
@@ -56,8 +55,7 @@ bq2psql import \
   --postgres-address="localhost:5432" \
   --postgres-user="postgres" \
   --postgres-password="XaD2sd$34Sdas1$ae" \
-  --postgres-database="postgres" \
-  --view-name="vessels"
+  --postgres-database="postgres" 
 ```
 
 When you execute this command, under the hood happens the followings steps:
