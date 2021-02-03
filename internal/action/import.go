@@ -148,7 +148,7 @@ func importToPostgres(ctx context.Context, ch chan map[string]bigquery.Value, ta
 		values = values + getValues(keys, doc)
 		query = fmt.Sprintf("INSERT INTO %v %v VALUES %v", tableName, columns, values)
 		numItems ++
-		if numItems == Batch || (numItems < Batch && currentBatch != 0) {
+		if numItems == Batch {
 			currentBatch ++
 			log.Printf("Batch %v, Rows Imported: %v", currentBatch, currentBatch*Batch)
 			query = TrimSuffix(query, ",") + ";"
