@@ -11,6 +11,7 @@ import (
 	"google.golang.org/api/iterator"
 	"log"
 	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -124,15 +125,43 @@ func getColumnNames(schema bigquery.Schema) []string {
 // Postgres functions
 func importToPostgres(ctx context.Context, ch chan map[string]bigquery.Value, tableName string) {
 	log.Println("→ PG →→ Importing data to Postgres")
+
+	const Batch = 500
+
+	var (
+		numItems   int
+		currentBatch  int
+		columns string
+		values string
+		keys []string
+		query string
+	)
+
+	numItems = 0
+	currentBatch = 0
+
 	for doc := range ch {
-		query := getInsertQuery(tableName, doc)
-		_, err := psClient.Exec(ctx, query)
-		if err != nil {
-			log.Println(doc)
-			log.Println("=======")
-			log.Println(query)
-			log.Fatalf("Error inserting: %v", err)
+
+		if numItems == 0 {
+			columns, keys = getColumns(doc)
 		}
+		values = values + getValues(keys, doc)
+		query = fmt.Sprintf("INSERT INTO %v %v VALUES %v", tableName, columns, values)
+		numItems ++
+		if numItems == Batch {
+			currentBatch ++
+			log.Printf("Batch %v, Rows Imported: %v", currentBatch, currentBatch*Batch)
+			query = TrimSuffix(query, ",") + ";"
+			_, err := psClient.Exec(ctx, query)
+			if err != nil {
+				log.Printf("Error inserting this query %v", query)
+				log.Fatalf("Error inserting: %v", err)
+			}
+			numItems = 0
+			query = ""
+			values = ""
+		}
+
 	}
 	log.Println("→ PG →→ Import process finished")
 }
@@ -151,11 +180,34 @@ func createTable(ctx context.Context, tableName string, schema string) {
 	log.Printf("→ PG →→ Successfully created table with name %v", tableName)
 }
 
-func getInsertQuery(table string, doc map[string]bigquery.Value) string {
-	var query = fmt.Sprintf("INSERT INTO %v ", table)
+func getColumns(doc map[string]bigquery.Value) (string, []string) {
 	var columns = "("
-	var values = "VALUES ("
-	for column, value := range doc {
+	keys := make([]string, 0, len(doc))
+
+	for k := range doc {
+		if reflect.ValueOf(doc[k]).Kind() == reflect.Slice {
+			continue
+		}
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for k := 0; k < len(keys); k++ {
+		columns = columns + utils.CamelCaseToSnakeCase(keys[k]) + ","
+	}
+
+	columns = TrimSuffix(columns, ",")
+	columns = columns + ") "
+	return columns, keys
+}
+
+
+func getValues(keys []string, doc map[string]bigquery.Value) string {
+	var values = "("
+
+	for k := 0; k < len(keys); k++ {
+		column := keys[k]
+		value := doc[column]
 		var myType = reflect.ValueOf(value).Kind()
 		if myType == reflect.Slice {
 			continue
@@ -167,14 +219,11 @@ func getInsertQuery(table string, doc map[string]bigquery.Value) string {
 		} else {
 			values = values + "null,"
 		}
-		columns = columns + utils.CamelCaseToSnakeCase(column) + ","
 	}
-	columns = TrimSuffix(columns, ",")
-	columns = columns + ") "
+
 	values = TrimSuffix(values, ",")
-	values = values + ");"
-	query = query + columns + values
-	return query
+	values = values + "),"
+	return values
 }
 
 func TrimSuffix(s, suffix string) string {
