@@ -150,20 +150,29 @@ func importToPostgres(ctx context.Context, ch chan map[string]bigquery.Value, ta
 		numItems ++
 		if numItems == Batch {
 			currentBatch ++
-			log.Printf("Batch %v, Rows Imported: %v", currentBatch, currentBatch*Batch)
-			query = TrimSuffix(query, ",") + ";"
-			_, err := psClient.Exec(ctx, query)
-			if err != nil {
-				log.Printf("Error inserting this query %v", query)
-				log.Fatalf("Error inserting: %v", err)
-			}
+			insert(ctx, currentBatch, currentBatch * Batch, query)
 			numItems = 0
 			query = ""
 			values = ""
 		}
 
 	}
+
+	if numItems > 0 {
+		insert(ctx, currentBatch + 1, currentBatch * Batch + numItems, query)
+	}
+
 	log.Println("→ PG →→ Import process finished")
+}
+
+func insert(ctx context.Context, currentBatch int, imported int, query string) {
+	log.Printf("Batch %v, Rows Imported: %v", currentBatch, imported)
+	query = TrimSuffix(query, ",") + ";"
+	_, err := psClient.Exec(ctx, query)
+	if err != nil {
+		log.Printf("Error inserting this query %v", query)
+		log.Fatalf("Error inserting: %v", err)
+	}
 }
 
 func createTable(ctx context.Context, tableName string, schema string) {
