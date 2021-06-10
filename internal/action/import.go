@@ -225,7 +225,7 @@ func getValues(keys []string, doc map[string]bigquery.Value) string {
 		} else if myType == reflect.String || myType == reflect.Struct {
 			valueString := strings.Replace(fmt.Sprintf("%v",value), "'", `''`, -1)
 			values = values + fmt.Sprintf("'%v'", valueString) +","
-		} else if myType == reflect.Int {
+		} else if myType == reflect.Int || myType == reflect.Float64 {
 			values = values + fmt.Sprintf("%v",value) + ","
 		} else {
 			values = values + "null,"
