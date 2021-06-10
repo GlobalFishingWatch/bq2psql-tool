@@ -29,7 +29,9 @@ func ImportBigQueryToPostgres(params types.ImportParams, postgresConfig types.Po
 	ch := make(chan  map[string]bigquery.Value, 100)
 
 	log.Println("Creating table to check if exists before the query")
-	createTable(ctx, params.TableName, params.Schema)
+	if len(params.Schema) > 0 {
+		createTable(ctx, params.TableName, params.Schema)
+	}
 
 	log.Println("→ Getting results from BigQuery")
 	getResultsFromBigQuery(ctx, params.Query, ch)

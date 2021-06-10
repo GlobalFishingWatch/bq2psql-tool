@@ -15,8 +15,7 @@ func init() {
 	importCmd.MarkFlagRequired("query")
 	importCmd.Flags().StringP("table-name", "t", "", "The name of the new table")
 	importCmd.MarkFlagRequired("table-name")
-	importCmd.Flags().StringP("table-schema", "", "", "The name of the view to associate the table")
-	importCmd.MarkFlagRequired("table-schema")
+	importCmd.Flags().StringP("table-schema", "", "", "The schema to create the table")
 
 	importCmd.Flags().StringP("postgres-address", "", "", "The address of the database")
 	importCmd.MarkFlagRequired("postgres-address")
