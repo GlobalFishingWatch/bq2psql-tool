@@ -128,7 +128,7 @@ func getColumnNames(schema bigquery.Schema) []string {
 func importToPostgres(ctx context.Context, ch chan map[string]bigquery.Value, tableName string) {
 	log.Println("→ PG →→ Importing data to Postgres")
 
-	const Batch = 500
+	const Batch = 1000
 
 	var (
 		numItems   int
