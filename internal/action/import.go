@@ -8,36 +8,50 @@ import (
 	"github.com/GlobalFishingWatch/bq2psql-tool/types"
 	"github.com/GlobalFishingWatch/bq2psql-tool/utils"
 	"github.com/jackc/pgx/v4"
+	"github.com/satori/go.uuid"
 	"google.golang.org/api/iterator"
 	"log"
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 )
 
 var bqClient *bigquery.Client
-var psClient *pgx.Conn
+var currentBatch = 0
 
 func ImportBigQueryToPostgres(params types.ImportParams, postgresConfig types.PostgresConfig) {
 	ctx := context.Background()
 
 	bqClient = common.CreateBigQueryClient(ctx, params.ProjectId)
-	psClient = common.CreatePostgresClient(ctx, postgresConfig)
 	defer bqClient.Close()
-	defer psClient.Close(ctx)
-
 	ch := make(chan  map[string]bigquery.Value, 100)
 
 	log.Println("Creating table to check if exists before the query")
 	if len(params.Schema) > 0 {
-		createTable(ctx, params.TableName, params.Schema)
+		var psClient *pgx.Conn = common.CreatePostgresClient(ctx, postgresConfig)
+		createTable(ctx, psClient, params.TableName, params.Schema)
+		psClient.Close(ctx)
 	}
 
 	log.Println("→ Getting results from BigQuery")
 	getResultsFromBigQuery(ctx, params.Query, ch)
 
 	log.Println("→ Importing results to Postgres")
-	importToPostgres(ctx, ch, params.TableName)
+
+
+	var wg sync.WaitGroup
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+		go func(wg *sync.WaitGroup, ch chan map[string]bigquery.Value) {
+			var psClient *pgx.Conn = common.CreatePostgresClient(ctx, postgresConfig)
+			defer psClient.Close(ctx)
+			importToPostgres(ctx, psClient, ch, params.TableName)
+			wg.Done()
+		}(&wg, ch)
+	}
+	wg.Wait()
 }
 
 // BigQuery Functions
@@ -50,7 +64,18 @@ func makeQuery(ctx context.Context, queryRequested string) (*bigquery.RowIterato
 	log.Println("→ BQ →→ Making query to get data from bigQuery")
 	query := bqClient.Query(queryRequested)
 	query.AllowLargeResults = true
-	it, err := query.Read(ctx)
+	currentTime := time.Now()
+	datasetId := "scratch_alvaro"
+	temporalTableName := fmt.Sprintf("%s_%s", uuid.NewV4(), currentTime.Format("2006-01-02"))
+	dstTable := bqClient.Dataset(datasetId).Table(string(temporalTableName))
+	err := dstTable.Create(ctx, &bigquery.TableMetadata{ExpirationTime: time.Now().Add(24 * time.Hour)})
+	if err != nil {
+		log.Fatal("→ BQ →→ Error creating temporary table", err)
+	}
+	query.QueryConfig.Dst = dstTable
+	log.Println("→ BQ →→ Exporting query to intermediate table")
+
+	it, err := query.Read(context.Background())
 	if err != nil {
 		log.Fatalf("→ BQ →→ Error counting rows: %v", err)
 	}
@@ -125,14 +150,13 @@ func getColumnNames(schema bigquery.Schema) []string {
 }
 
 // Postgres functions
-func importToPostgres(ctx context.Context, ch chan map[string]bigquery.Value, tableName string) {
+func importToPostgres(ctx context.Context, psClient *pgx.Conn, ch chan map[string]bigquery.Value, tableName string) {
 	log.Println("→ PG →→ Importing data to Postgres")
 
 	const Batch = 1000
 
 	var (
 		numItems   int
-		currentBatch  int
 		columns string
 		values string
 		keys []string
@@ -140,7 +164,6 @@ func importToPostgres(ctx context.Context, ch chan map[string]bigquery.Value, ta
 	)
 
 	numItems = 0
-	currentBatch = 0
 
 	for doc := range ch {
 
@@ -152,7 +175,7 @@ func importToPostgres(ctx context.Context, ch chan map[string]bigquery.Value, ta
 		numItems ++
 		if numItems == Batch {
 			currentBatch ++
-			insert(ctx, currentBatch, currentBatch * Batch, query)
+			insert(ctx, psClient, currentBatch, currentBatch * Batch, query)
 			numItems = 0
 			query = ""
 			values = ""
@@ -161,13 +184,13 @@ func importToPostgres(ctx context.Context, ch chan map[string]bigquery.Value, ta
 	}
 
 	if numItems > 0 {
-		insert(ctx, currentBatch + 1, currentBatch * Batch + numItems, query)
+		insert(ctx, psClient, currentBatch + 1, currentBatch * Batch + numItems, query)
 	}
 
 	log.Println("→ PG →→ Import process finished")
 }
 
-func insert(ctx context.Context, currentBatch int, imported int, query string) {
+func insert(ctx context.Context, psClient *pgx.Conn, currentBatch int, imported int, query string) {
 	log.Printf("Batch %v, Rows Imported: %v", currentBatch, imported)
 	query = TrimSuffix(query, ",") + ";"
 	_, err := psClient.Exec(ctx, query)
@@ -177,7 +200,7 @@ func insert(ctx context.Context, currentBatch int, imported int, query string) {
 	}
 }
 
-func createTable(ctx context.Context, tableName string, schema string) {
+func createTable(ctx context.Context, psClient *pgx.Conn, tableName string, schema string) {
 	createTableCommand := fmt.Sprintf(
 	`CREATE TABLE %s (
 				%v
