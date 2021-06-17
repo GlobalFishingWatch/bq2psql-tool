@@ -65,7 +65,7 @@ func listObjects(ctx context.Context, projectId string, bucketName string, datas
 	}
 
 	for i := 0; i < len(names); i++ {
-		uri := fmt.Sprintf(`gs://%s`, names[i])
+		uri := fmt.Sprintf(`gs://%s/%s`, bucketName, names[i])
 		importFileToCloudSQL(ctx, projectId, cloudSqlConfig, uri)
 		obj := bkt.Object(names[i])
 		if err := obj.Delete(ctx); err != nil {
