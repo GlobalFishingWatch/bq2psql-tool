@@ -168,13 +168,13 @@ func importFileToCloudSQL(ctx context.Context, projectId string, cloudSqlConfig 
 		if err != nil {
 			newErr, ok := err.(*googleapi.Error)
 			if !ok {
-				log.Fatal("Error ingesting", err)
+				log.Fatal("Error ingesting ", err, newErr)
 			} else if newErr.Code == 409 || newErr.Code >= 500 {
 				log.Printf("Retrying file %s in 2 min", cloudSqlConfig.Table, newErr.Body)
 				time.Sleep(2 * time.Minute)
 				continue
 			} else {
-				log.Fatal("Error google ingesting", err)
+				log.Fatal("Error google ingesting ", err, newErr)
 			}
 		}
 		break
