@@ -28,23 +28,30 @@ func ImportCsvBigQueryToPostgres(params types.ImportCsvParams, cloudSqlConfig ty
 
 	bigQueryClient = common.CreateBigQueryClient(ctx, params.ProjectId)
 	defer bigQueryClient.Close()
+
 	// Create a temporal table
-	temporalTableName := createTemporalTable(ctx, params.Query)
+	log.Println("→ Creating temporal table from query result")
+	temporalTableName := createTemporalTable(ctx, params.TemporalDataset, params.Query)
 
 	// Export events to csv
+	log.Println("→ Exporting results from temporal table to gcs")
 	exportTemporalTableToCsv(ctx, params.ProjectId, params.TemporalDataset, temporalTableName, params.TemporalBucket)
 
 	// Delete intermediate table
+	log.Println("→ Deleting temporal table")
 	deleteTemporalTable(ctx, params.ProjectId, params.TemporalDataset, temporalTableName)
 
 	// List objects, import data and delete object
-	listObjects(ctx, params.ProjectId, params.TemporalBucket, params.TemporalDataset, temporalTableName, cloudSqlConfig)
+	log.Println("→ Listing objects and importing to Postgres")
+	listObjects(ctx, params.ProjectId, params.TemporalBucket, temporalTableName, cloudSqlConfig)
 }
 
-func listObjects(ctx context.Context, projectId string, bucketName string, dataset string, temporalTable string, cloudSqlConfig types.CloudSqlConfig) {
+func listObjects(ctx context.Context, projectId string, bucketName string, temporalTable string, cloudSqlConfig types.CloudSqlConfig) {
 	client, err := storage.NewClient(ctx)
+	defer client.Close()
+
 	if err != nil {
-		log.Fatal("Error creating GCS client")
+		log.Fatal("→ GCS →→ Error creating GCS client")
 	}
 	bkt := client.Bucket(bucketName)
 	prefix := fmt.Sprintf(`bq2psql-tool/%s/`, temporalTable)
@@ -59,7 +66,7 @@ func listObjects(ctx context.Context, projectId string, bucketName string, datas
 			break
 		}
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("→ GCS →→ Error listing objects ", err)
 		}
 		names = append(names, attrs.Name)
 	}
@@ -74,13 +81,13 @@ func listObjects(ctx context.Context, projectId string, bucketName string, datas
 	}
 }
 
-func createTemporalTable(ctx context.Context, queryRequested string) string {
+func createTemporalTable(ctx context.Context, datasetId string, queryRequested string) string {
 	log.Println("→ BQ →→ Making query to get data from bigQuery")
 	query := bigQueryClient.Query(queryRequested)
 	query.AllowLargeResults = true
 	currentTime := time.Now()
-	datasetId := "scratch_alvaro"
 	temporalTableName := fmt.Sprintf("%s_%s", uuid.NewV4(), currentTime.Format("2006_01_02_15_04"))
+	log.Printf("→ BQ →→ Temporal table name: %s", temporalTableName)
 	dstTable := bigQueryClient.Dataset(datasetId).Table(string(temporalTableName))
 	err := dstTable.Create(ctx, &bigquery.TableMetadata{ExpirationTime: time.Now().Add(5 * time.Hour)})
 	if err != nil {
@@ -94,10 +101,10 @@ func createTemporalTable(ctx context.Context, queryRequested string) string {
 
 	config, err := job.Config()
 	if err != nil {
-		log.Fatal("Error obtaining config", err)
+		log.Fatal("→ BQ →→ Error obtaining config", err)
 	}
 	tempTable := config.(*bigquery.QueryConfig).Dst
-	log.Println("Temp table", tempTable.TableID)
+	log.Println("→ BQ →→ Temp table", tempTable.TableID)
 	return tempTable.TableID
 }
 
@@ -139,7 +146,7 @@ func deleteTemporalTable(ctx context.Context, projectId string, dataset string, 
 	temporalDataset := bigQueryClient.DatasetInProject(projectId, dataset)
 	table := temporalDataset.Table(temporalTable)
 	if err := table.Delete(ctx); err != nil {
-		log.Fatalf("Error deleteing temporal table %s", temporalTable)
+		log.Fatalf("→ BQ →→Error deleteing temporal table %s", temporalTable)
 	}
 }
 
@@ -163,20 +170,20 @@ func importFileToCloudSQL(ctx context.Context, projectId string, cloudSqlConfig 
 	}
 	var operation *sqladmin.Operation
 	for {
-		log.Printf("Importing file (%s) to cloud sql (%s) and columns %s", uri, cloudSqlConfig.Table, strings.Join(columns, ","))
-		log.Printf("Project: %s, Instance: %s", projectId, cloudSqlConfig.Instance)
+		log.Printf("→ PSSQL →→ Importing file (%s) to cloud sql (%s) and columns %s", uri, cloudSqlConfig.Table, strings.Join(columns, ","))
+		log.Printf("→ PSSQL →→ Project: %s, Instance: %s", projectId, cloudSqlConfig.Instance)
 		call := sqlAdminService.Instances.Import(projectId, cloudSqlConfig.Instance, importContext)
 		operation, err = call.Do()
 		if err != nil {
 			newErr, ok := err.(*googleapi.Error)
 			if !ok {
-				log.Fatal("Error ingesting ", err, newErr)
+				log.Fatal("→ PSQL →→Error ingesting ", err, newErr)
 			} else if newErr.Code == 409 || newErr.Code >= 500 {
-				log.Printf("Retrying file %s in 2 min", cloudSqlConfig.Table, newErr.Body)
+				log.Printf("→ PSQL →→ Retrying file %s in 2 min", cloudSqlConfig.Table, newErr.Body)
 				time.Sleep(2 * time.Minute)
 				continue
 			} else {
-				log.Fatal("Error google ingesting ", err, newErr)
+				log.Fatal("→ PSQL →→ Error google ingesting ", err, newErr)
 			}
 		}
 		break
@@ -188,25 +195,25 @@ func importFileToCloudSQL(ctx context.Context, projectId string, cloudSqlConfig 
 		}
 		resp, err := client.Get(operation.SelfLink)
 		if err != nil {
-			log.Fatal("Error obtaining status of import", err)
+			log.Fatal("→ PSQL →→ Error obtaining status of import", err)
 		}
 		body, err := ioutil.ReadAll(resp.Body)
 		var respJson map[string]interface{}
 		err = json.Unmarshal(body, &respJson)
 		if err != nil {
-			log.Fatal("Error unmarshal response", err)
+			log.Fatal("→ PSQL →→ Error unmarshal response", err)
 		}
-		log.Printf("Status: %s", respJson["status"])
+		log.Printf("→ PSQL  →→Status: %s", respJson["status"])
 		if respJson["status"] == "PENDING" || respJson["status"] == "RUNNING" {
 			time.Sleep(5 * time.Second)
 			continue
 		} else if respJson["status"] == "DONE" {
 			if respJson["error"] != nil {
 				if strings.Contains(fmt.Sprintf("%s", respJson["error"]), "cleanup after import is completed") {
-					log.Println("Cleenup error")
+					log.Println("→ PSQL →→ Cleenup error")
 					break
 				}
-				log.Fatal("Error importing", respJson["error"])
+				log.Fatal("→ PSQL →→ Error importing", respJson["error"])
 				panic(respJson["error"])
 			} else {
 				break
