@@ -42,7 +42,7 @@ func ImportBigQueryToPostgres(params types.ImportParams, postgresConfig types.Po
 
 
 	var wg sync.WaitGroup
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 1; i++ {
 		wg.Add(1)
 		go func(wg *sync.WaitGroup, ch chan map[string]bigquery.Value) {
 			var psClient *pgx.Conn = common.CreatePostgresClient(ctx, postgresConfig)
