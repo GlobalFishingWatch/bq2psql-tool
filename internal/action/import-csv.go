@@ -152,6 +152,7 @@ func importFileToCloudSQL(ctx context.Context, projectId string, cloudSqlConfig 
 	importContext := &sqladmin.InstancesImportRequest{
 		ImportContext: &sqladmin.ImportContext{
 			Database: "postgres",
+			ImportUser: "postgres",
 			FileType: "CSV",
 			Uri:      uri,
 			CsvImportOptions: &sqladmin.ImportContextCsvImportOptions{
