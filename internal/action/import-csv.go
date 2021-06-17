@@ -163,6 +163,7 @@ func importFileToCloudSQL(ctx context.Context, projectId string, cloudSqlConfig 
 	var operation *sqladmin.Operation
 	for {
 		log.Printf("Importing file (%s) to cloud sql (%s) and columns %s", uri, cloudSqlConfig.Table, strings.Join(columns, ","))
+		log.Printf("Project: %s, Instance: %s", projectId, cloudSqlConfig.Instance)
 		call := sqlAdminService.Instances.Import(projectId, cloudSqlConfig.Instance, importContext)
 		operation, err = call.Do()
 		if err != nil {
