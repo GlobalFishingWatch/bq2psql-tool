@@ -12,5 +12,6 @@ RUN go build -o bq2psql-tool main.go
 CMD ["reflex", "-c", "./reflex.conf"]
 
 FROM alpine AS build
-COPY --from=development /go/src/app/bq2psql-tool /opt/bq2psql-tool
+WORKDIR /opt/
+COPY --from=development /go/src/app/bq2psql-tool bq2psql
 ENTRYPOINT ["/opt/bq2psql-tool"]
