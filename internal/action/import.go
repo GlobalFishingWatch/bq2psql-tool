@@ -202,7 +202,7 @@ func insert(ctx context.Context, psClient *pgx.Conn, currentBatch int, imported 
 
 func createTable(ctx context.Context, psClient *pgx.Conn, tableName string, schema string) {
 	createTableCommand := fmt.Sprintf(
-	`CREATE TABLE %s (
+	`CREATE TABLE IF NOT EXISTS %s (
 				%v
            );`, tableName, schema)
 	log.Printf("→ PG →→ Creating table with command %s", createTableCommand)
