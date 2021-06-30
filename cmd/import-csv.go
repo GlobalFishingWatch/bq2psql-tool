@@ -26,17 +26,6 @@ func init() {
 	importCsvCmd.Flags().StringP("postgres-table-columns", "", "", "")
 	importCsvCmd.MarkFlagRequired("postgres-table-columns")
 
-	/*importCsvCmd.Flags().StringP("postgres-address", "", "", "The address of the database")
-	importCsvCmd.MarkFlagRequired("postgres-address")
-	importCsvCmd.Flags().StringP("postgres-user", "", "", "The destination credentials user")
-	importCsvCmd.MarkFlagRequired("postgres-user")
-	importCsvCmd.Flags().StringP("postgres-password", "", "", "The destination credentials password")
-	importCsvCmd.MarkFlagRequired("postgres-password")
-	importCsvCmd.Flags().StringP("postgres-database", "", "", "The destination database name")
-	importCsvCmd.MarkFlagRequired("postgres-database")
-	importCsvCmd.Flags().StringP("postgres-table-name", "", "", "The destination table in postgres")
-	importCsvCmd.MarkFlagRequired("postgres-table-name")*/
-
 	viper.BindPFlag("import-csv-project-id", importCsvCmd.Flags().Lookup("project-id"))
 	viper.BindPFlag("import-csv-query", importCsvCmd.Flags().Lookup("query"))
 	viper.BindPFlag("import-csv-temporal-dataset", importCsvCmd.Flags().Lookup("temporal-dataset"))
@@ -44,12 +33,6 @@ func init() {
 	viper.BindPFlag("import-csv-postgres-instance", importCsvCmd.Flags().Lookup("postgres-instance"))
 	viper.BindPFlag("import-csv-postgres-table", importCsvCmd.Flags().Lookup("postgres-table"))
 	viper.BindPFlag("import-csv-postgres-table-columns", importCsvCmd.Flags().Lookup("postgres-table-columns"))
-
-/*	viper.BindPFlag("import-csv-postgres-address", importCsvCmd.Flags().Lookup("postgres-address"))
-	viper.BindPFlag("import-csv-postgres-user", importCsvCmd.Flags().Lookup("postgres-user"))
-	viper.BindPFlag("import-csv-postgres-password", importCsvCmd.Flags().Lookup("postgres-password"))
-	viper.BindPFlag("import-csv-postgres-database", importCsvCmd.Flags().Lookup("postgres-database"))
-	viper.BindPFlag("import-csv-postgres-table-name", importCsvCmd.Flags().Lookup("postgres-table-name"))*/
 
 	rootCmd.AddCommand(importCsvCmd)
 }
