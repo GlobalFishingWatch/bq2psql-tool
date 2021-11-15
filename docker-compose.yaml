@@ -1,0 +1,9 @@
+version: '3.7'
+services:
+  bq2psql-service:
+    build:
+      context: .
+      target: development
+    volumes:
+      - '.:/go/src/app'
+      - '~/.config/gcloud:/root/.config/gcloud'

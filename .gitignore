@@ -1,0 +1,10 @@
+.idea
+.DS_Store
+
+*.so
+main
+
+bq2psql
+bq2psql-tool
+
+examples
