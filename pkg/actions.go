@@ -1,4 +1,4 @@
-package library
+package pkg
 
 import (
 	"github.com/GlobalFishingWatch/bq2psql-tool/internal/action"
