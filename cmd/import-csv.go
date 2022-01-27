@@ -66,9 +66,10 @@ Example:
 		}
 
 		postgresConfig := types.CloudSqlConfig{
-			Instance:     viper.GetString("import-csv-postgres-instance"),
+			Instance:  viper.GetString("import-csv-postgres-instance"),
 			Table:     viper.GetString("import-csv-postgres-table"),
-			Columns:     viper.GetString("import-csv-postgres-table-columns"),
+			Columns:   viper.GetString("import-csv-postgres-table-columns"),
+			Database:  "",
 		}
 
 		action.ImportCsvBigQueryToPostgres(params, postgresConfig)
