@@ -26,6 +26,10 @@ var bigQueryClient *bigquery.Client
 func ImportCsvBigQueryToPostgres(params types.ImportCsvParams, cloudSqlConfig types.CloudSqlConfig) {
 	ctx := context.Background()
 
+	if cloudSqlConfig.Database == "" {
+		cloudSqlConfig.Database = "postgres"
+	}
+
 	bigQueryClient = common.CreateBigQueryClient(ctx, params.ProjectId)
 	defer bigQueryClient.Close()
 
